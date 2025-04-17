@@ -12,13 +12,14 @@ func ComputePace(distance float64, timeInSeconds int) float64 {
 	return pace
 }
 
-// funkcja ComputeTimeStamps przyjmuje dystans i czas i odcinek i funkcję do obliczenia tempa (ComputePace) co ile km ma byc timestamp, zwraca slice z timestampami
+// ComputeTimeStamps takes distance, time, interval and pace calculation function (ComputePace) as parameters,
+// and returns a slice of timestamps for each kilometer interval
 func ComputeTimeStamps(distance float64, timeInSeconds int, distInterval float64, paceFunc func(float64, int) float64) []int {
 	timeStamps := []int{}
 
 	pace := paceFunc(distance, timeInSeconds)
 
-	// Liczba interwałów
+	// Number of intervals
 	numIntervals := int(distance / distInterval)
 
 	// in loop add new timestamps:= i*dictInterval * pace * constants.SecondsInMinute
@@ -29,7 +30,64 @@ func ComputeTimeStamps(distance float64, timeInSeconds int, distInterval float64
 	return timeStamps
 }
 
-// funkcja ConvertTimeStamps przyjmuje slice z timestampami w sekundach i zwraca slice z timestampami w formacie HH:MM:SS
+func ComputeTimeStampsNegativeSplit(distance float64,
+	timeInSeconds int,
+	distInterval float64,
+	splitDistanceProcentage int16,
+	paceDifrancePercentage int16,
+	paceFunc func(float64, int) float64) []int {
+	timeStamps := []int{}
+
+	// Wyliczenie średniego tempa na cały dystans
+	avgPace := paceFunc(distance, timeInSeconds)
+
+	// Wyliczenie punktu podziału dystansu
+	splitPoint := distance * float64(splitDistanceProcentage) / 100.0
+
+	// Wyliczenie tempa dla wolniejszej i szybszej części
+	paceRatio := float64(paceDifrancePercentage) / 100.0
+
+	// Aby zachować średnie tempo na całym dystansie, musimy odpowiednio zrównoważyć tempa
+	// Zakładamy: slowerPartPace = avgPace * (1 + adjustment) i fasterPartPace = avgPace * (1 - adjustment)
+	// Gdzie adjustment = paceRatio * (distance - splitPoint) / distance
+	adjustment := paceRatio * splitPoint / distance
+	slowerPartPace := avgPace * (1.0 + adjustment)
+	fasterPartPace := avgPace * (1.0 - adjustment*splitPoint/(distance-splitPoint))
+
+	// Liczba interwałów
+	numIntervals := int(distance / distInterval)
+
+	// Zmienna przechowująca aktualny czas
+	currentTime := 0.0
+
+	for i := 1; i <= numIntervals; i++ {
+		// Obliczenie dystansu na końcu tego interwału
+		intervalEnd := float64(i) * distInterval
+
+		// Sprawdzamy czy interwał należy całkowicie do wolniejszej części
+		if intervalEnd <= splitPoint {
+			// Cały interwał w wolniejszej części
+			currentTime += distInterval * slowerPartPace * constants.SecondsInMinute
+		} else if intervalEnd > splitPoint && intervalEnd-distInterval < splitPoint {
+			// Interwał częściowo w wolniejszej, częściowo w szybszej części
+			distInSlowerPart := splitPoint - (intervalEnd - distInterval)
+			distInFasterPart := distInterval - distInSlowerPart
+
+			currentTime += distInSlowerPart * slowerPartPace * constants.SecondsInMinute
+			currentTime += distInFasterPart * fasterPartPace * constants.SecondsInMinute
+		} else {
+			// Cały interwał w szybszej części
+			currentTime += distInterval * fasterPartPace * constants.SecondsInMinute
+		}
+
+		// Dodanie czasu do listy timestampów
+		timeStamps = append(timeStamps, int(currentTime))
+	}
+
+	return timeStamps
+}
+
+// ConvertTimeStamps takes a slice of timestamps in seconds and returns a slice of timestamps in HH:MM:SS format
 func ConvertTimeStamps(timeStamps []int) []string {
 	timeStampsStr := []string{}
 
