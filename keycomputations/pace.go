@@ -30,57 +30,59 @@ func ComputeTimeStamps(distance float64, timeInSeconds int, distInterval float64
 	return timeStamps
 }
 
+// ComputeTimeStampsNegativeSplit calculates timestamps for negative split strategy
+// where runner runs slower in the first part of the distance and faster in the second part
 func ComputeTimeStampsNegativeSplit(distance float64,
 	timeInSeconds int,
 	distInterval float64,
-	splitDistanceProcentage int16,
-	paceDifrancePercentage int16,
+	splitDistancePercentage int16,
+	paceDifferencePercentage int16,
 	paceFunc func(float64, int) float64) []int {
 	timeStamps := []int{}
 
-	// Wyliczenie średniego tempa na cały dystans
+	// Calculate average pace for the entire distance
 	avgPace := paceFunc(distance, timeInSeconds)
 
-	// Wyliczenie punktu podziału dystansu
-	splitPoint := distance * float64(splitDistanceProcentage) / 100.0
+	// Calculate the split point distance
+	splitPoint := distance * float64(splitDistancePercentage) / 100.0
 
-	// Wyliczenie tempa dla wolniejszej i szybszej części
-	paceRatio := float64(paceDifrancePercentage) / 100.0
+	// Calculate pace for slower and faster parts
+	paceRatio := float64(paceDifferencePercentage) / 100.0
 
-	// Aby zachować średnie tempo na całym dystansie, musimy odpowiednio zrównoważyć tempa
-	// Zakładamy: slowerPartPace = avgPace * (1 + adjustment) i fasterPartPace = avgPace * (1 - adjustment)
-	// Gdzie adjustment = paceRatio * (distance - splitPoint) / distance
+	// To maintain average pace across the entire distance, we need to balance paces appropriately
+	// We assume: slowerPartPace = avgPace * (1 + adjustment) and fasterPartPace = avgPace * (1 - adjustment)
+	// Where adjustment = paceRatio * (distance - splitPoint) / distance
 	adjustment := paceRatio * splitPoint / distance
 	slowerPartPace := avgPace * (1.0 + adjustment)
 	fasterPartPace := avgPace * (1.0 - adjustment*splitPoint/(distance-splitPoint))
 
-	// Liczba interwałów
+	// Number of intervals
 	numIntervals := int(distance / distInterval)
 
-	// Zmienna przechowująca aktualny czas
+	// Variable to keep track of current time
 	currentTime := 0.0
 
 	for i := 1; i <= numIntervals; i++ {
-		// Obliczenie dystansu na końcu tego interwału
+		// Calculate distance at the end of this interval
 		intervalEnd := float64(i) * distInterval
 
-		// Sprawdzamy czy interwał należy całkowicie do wolniejszej części
+		// Check if interval belongs entirely to the slower part
 		if intervalEnd <= splitPoint {
-			// Cały interwał w wolniejszej części
+			// Entire interval in slower part
 			currentTime += distInterval * slowerPartPace * constants.SecondsInMinute
 		} else if intervalEnd > splitPoint && intervalEnd-distInterval < splitPoint {
-			// Interwał częściowo w wolniejszej, częściowo w szybszej części
+			// Interval partially in slower part, partially in faster part
 			distInSlowerPart := splitPoint - (intervalEnd - distInterval)
 			distInFasterPart := distInterval - distInSlowerPart
 
 			currentTime += distInSlowerPart * slowerPartPace * constants.SecondsInMinute
 			currentTime += distInFasterPart * fasterPartPace * constants.SecondsInMinute
 		} else {
-			// Cały interwał w szybszej części
+			// Entire interval in faster part
 			currentTime += distInterval * fasterPartPace * constants.SecondsInMinute
 		}
 
-		// Dodanie czasu do listy timestampów
+		// Add time to the timestamps list
 		timeStamps = append(timeStamps, int(currentTime))
 	}
 
