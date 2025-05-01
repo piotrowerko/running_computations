@@ -18,9 +18,10 @@ Running Computations is a Go application that allows:
 git clone https://github.com/piotrowerko/running_computations.git
 cd running_computations
 go build -o running_cli cmd/cli/main.go
+go build -o running_api cmd/api/main.go
 ```
 
-## Usage
+## CLI Usage
 
 ```bash
 # Calculate pace for custom distance and time
@@ -32,11 +33,14 @@ go build -o running_cli cmd/cli/main.go
 # Using predefined distances
 ./running_cli -preset=10k -timeformat=00:45:00
 
+# Using custom interval for timestamps (every 0.5 km)
+./running_cli -preset=5k -timeformat=00:25:00 -interval=0.5
+
 # Negative split strategy (slower start, faster finish)
 ./running_cli -preset=10k -timeformat=00:45:00 -negativesplit -splitdistance=60 -pacedifference=3
 ```
 
-### Available Parameters
+### Available CLI Parameters
 
 | Parameter | Description | Default Value |
 |-----------|-------------|---------------|
@@ -48,6 +52,62 @@ go build -o running_cli cmd/cli/main.go
 | -negativesplit | Use negative split pacing strategy | false |
 | -splitdistance | Percentage of distance for split point | 50 |
 | -pacedifference | Percentage difference between slower and faster pace | 5 |
+
+## API Usage
+
+The application also provides a REST API that can be used to perform the same calculations.
+
+```bash
+# Start the API server
+./running_api
+```
+
+The server will start listening on port 8080.
+
+### API Endpoints
+
+#### Health Check
+```bash
+curl http://localhost:8080/
+```
+
+#### Pace Calculation
+The API provides a `/pace` endpoint that accepts POST requests with JSON data.
+
+##### Example 1: Basic pace calculation for 10km with a time of 45 minutes
+```bash
+curl -X POST http://localhost:8080/pace \
+  -H "Content-Type: application/json" \
+  -d '{
+    "distance": 10.0,
+    "timeFormat": "00:45:00"
+  }'
+```
+
+##### Example 2: Using negative split strategy for a half marathon
+```bash
+curl -X POST http://localhost:8080/pace \
+  -H "Content-Type: application/json" \
+  -d '{
+    "preset": "half",
+    "timeFormat": "01:45:00",
+    "interval": 1.0,
+    "negativeSplit": true,
+    "splitDistance": 60,
+    "paceDifference": 5
+  }'
+```
+
+##### Example 3: Using time in seconds and custom distance
+```bash
+curl -X POST http://localhost:8080/pace \
+  -H "Content-Type: application/json" \
+  -d '{
+    "distance": 5.0,
+    "timeInSeconds": 1500,
+    "interval": 0.5
+  }'
+```
 
 ## Predefined Distances
 

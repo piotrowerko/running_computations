@@ -6,6 +6,7 @@ import (
 	"github.com/piotrowerko/running_computations/pkg/constants"
 )
 
+
 func ComputePace(distance float64, timeInSeconds int) float64 {
 	timeInMinutes := float64(timeInSeconds) / constants.SecondsInMinute
 	pace := timeInMinutes / distance
