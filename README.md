@@ -139,7 +139,7 @@ Times at each interval:
 
 ## License
 
-This project is available under the terms specified in the [license](LICENSE).
+Ten projekt jest dostępny na warunkach [GNU General Public License v3.0](LICENSE).
 
 ## Author
 
